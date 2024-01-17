@@ -1,57 +1,69 @@
-// 4.3 Word Counter 2 : 문서 파일을 읽어서 특수 문자(“ ` ‘, . - _) 등을 제외하고 유일한 단어 수를 세고, 각 단어별 출현 횟수를 출력하는 프로그램
+// 4.3 : 문서 파일을 읽어서 특수 문자(“ ` ‘, . - _) 등을 제외하고 유일한 단어 수를 세고, 각 단어별 출현 횟수를 출력하는 프로그램
+const fs = require('fs'); // 파일 시스템 모듈 불러오기
+const readline = require('readline'); // readline 모듈 불러오기
 
-// 파일 시스템 모듈을 사용하기 위해 fs 모듈을 가져옵니다.
-const fs = require('fs');
+// 비동기적으로 파일을 읽고 각 단어의 출현 빈도를 세는 함수
+function countWords(filePath) {
+    return new Promise((resolve, reject) => {
+        let wordCounts = {}; // 단어별 출현 횟수를 저장할 객체
 
-// 로컬 텍스트 문서의 파일 경로를 설정합니다 (본인의 파일 경로로 변경하세요).
-const filePath = 'C:/Users/bsymonica/study/study_js/qa/readsample.txt';
+        // 파일 스트림 생성
+        const stream = fs.createReadStream(filePath);
 
-// 제외할 특수 문자를 정의합니다.
-const excludeSymbols = ['"', '`', "'", ',', '.', '-', '_'];
+        // readline 인터페이스 설정
+        const rl = readline.createInterface({
+            input: stream,
+            crlfDelay: Infinity
+        });
 
-// 동기적으로 텍스트 문서를 읽고 파일 내용을 문자열로 저장합니다.
-const allFileContents = fs.readFileSync(filePath, 'utf-8');
-console.log(`문서 전체 내용 : ${allFileContents}`);
+        // 파일의 각 줄을 읽을 때 실행될 이벤트 리스너
+        rl.on('line', (line) => {
+            // 정규식을 사용하여 지정한 특수 문자 제거 및 소문자로 변환
+            const cleanedLine = line.replace(/[‘.-_]/g, '').toLowerCase();
+            // 단어로 분리 (공백 기준)
+            const words = cleanedLine.split(/\s+/);
 
-// 특정 기호 및 공백을 전체 내용에서 제거합니다.
-const cleanedText = allFileContents
-    .replace(new RegExp(`[${excludeSymbols.join('')}\\s\r\n]`, 'g'), '');  // 기호, 공백, 라인 브레이크 제거
+            // 각 단어에 대해 출현 횟수 계산
+            words.forEach(word => {
+                if (word) { // 빈 문자열이 아닌 경우에만 계산
+                    wordCounts[word] = (wordCounts[word] || 0) + 1;
+                }
+            });
+        });
 
-// 빈 문자열을 제외한 문자 수를 계산합니다.
-const characterCount = cleanedText.length;
-console.log(`문서에는 빈 문자열 및 특정 기호을 제외하고 ${characterCount}개의 문자가 있습니다.`);
+        // 파일 읽기가 완료되면(resolve) 단어별 출현 횟수를 반환하는 이벤트 리스너
+        rl.on('close', () => {
+            resolve(wordCounts);
+        });
 
-// 중복 문자를 찾습니다.
-function checkCharacter(characterCount) {
-    // 각 문자의 출현 횟수를 저장할 객체를 초기화 합니다.
-    const charCounts = {};
-
-    // 문자열에 반복 문자가 있는지 확인하는 루프를 작성합니다.
-    for (const char of characterCount) {
-        // 만약 charCounts 객체에 해당 문자가 이미 존재한다면,
-        if (charCounts[char]) {
-            // 출현 횟수를 증가시킵니다.
-            charCounts[char]++;
-        } else {
-            // 해당 문자를 charCounts 객체에 추가하고 출현 횟수를 1로 설정합니다.
-            charCounts[char] = 1;
-        }
-    }
-
-    // 출현 횟수가 2보다 작은 문자를 걸러냅니다.
-    const doubleCounts = Object.keys(charCounts).filter(char => charCounts[char] > 1);
-
-    // 동일한 문자의 출현 횟수를 저장할 객체를 생성합니다.
-    const result = {};
-    doubleCounts.forEach(char => {
-        result[char] = charCounts[char];
+        // 파일 읽기 중 오류가 발생하면(reject) 오류를 반환하는 이벤트 리스너
+        stream.on('error', (err) => {
+            reject(err);
+        });
     });
-
-    return result;
 }
 
-const doubleCounts = checkCharacter(cleanedText);
-console.log('각 유일한 단어의 출현 횟수 >');
-for (const [char, count] of Object.entries(doubleCounts)) {
-    console.log(`${char}: ${count}`);
-};
+// 읽고자 하는 파일의 경로를 작성 합니다.
+const filePath = 'C:/Users/bsymonica/Code_Study/study_js/QA_JS/readsample.txt'; 
+
+// 콘솔에 출력할 내역을 작성 합니다.
+countWords(filePath)
+    .then(wordCounts => {
+        console.log("각 단어별 출현 횟수:");
+        Object.keys(wordCounts).forEach(word => {
+            console.log(`${word}: ${wordCounts[word]}`);
+        });
+    })
+    .catch(error => {
+        console.error(`파일을 읽는 도중 오류가 발생했습니다: ${error.message}`);
+    });
+
+/* 
+1. fs 모듈과 readline 모듈을 사용하여 파일을 읽습니다.
+2. countWords 함수는 비동기적으로 파일을 읽고 각 단어의 출현 빈도를 계산하는 Promise 객체를 생성합니다.
+3. readline 인터페이스는 파일을 한 줄씩 읽습니다. 각 줄을 읽을 때마다 정규식을 사용하여 지정한 특수 문자를 제거하고, 소문자로 변환한 후 공백을 기준으로 단어를 분리합니다.
+4. 분리된 각 단어에 대해 wordCounts 객체에서 해당 단어의 출현 횟수를 계산하고 업데이트합니다.
+5. 파일의 모든 줄이 읽히고 나면, close 이벤트가 발생하고, 이 때 wordCounts 객체가 resolve 함수를 통해 반환됩니다.
+6. 만약 파일 읽기 과정에서 오류가 발생하면, stream의 error 이벤트가 발생하고, reject 함수가 호출되어 오류 정보를 반환합니다.
+7. countWords 함수를 호출한 후, .then을 사용하여 각 단어와 그 출현 횟수를 출력하거나 .catch를 사용하여 오류를 처리합니다.
+*/
